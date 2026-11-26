@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #2A2522; --sub: #8F867C; --line: #D6CFC4; --bg: #FFFFFF; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); overflow: hidden; }
+  body {
+    font-family: "Inter", -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink); display: flex; justify-content: center; padding: 4px 2px;
+  }
+  .clock {
+    width: 100%; max-width: 260px; text-align: center;
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 10px 0 9px;
+  }
+  .time {
+    font-family: "DM Serif Display", Georgia, serif;
+    font-size: 40px; line-height: 1; letter-spacing: .01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .colon { display: inline-block; margin: 0 1px; transform: translateY(-3px); color: var(--sub); }
+  .ampm { font-family: "Inter", sans-serif; font-size: 10px; color: var(--sub); letter-spacing: .08em; margin-left: 4px; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink: #EDE7DF; --sub: #9A9187; --line: #4A443F; --bg: #191919; }
+  }
+</style>
+</head>
+<body>
+<div class="clock"><div class="time" id="t"></div></div>
+<script>
+  // ?h=12 for a 12-hour clock; default 24-hour
+  const h12 = new URLSearchParams(location.search).get("h") === "12";
+  function tick() {
+    const d = new Date();
+    let h = d.getHours(), ap = "";
+    if (h12) { ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12; }
+    const hh = h12 ? String(h) : String(h).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    document.getElementById("t").innerHTML =
+      `${hh}<span class="colon">:</span>${mm}` + (ap ? `<span class="ampm">${ap}</span>` : "");
+  }
+  tick();
+  setTimeout(() => { tick(); setInterval(tick, 60000); }, (60 - new Date().getSeconds()) * 1000 + 50);
+</script>
+</body>
+</html>
