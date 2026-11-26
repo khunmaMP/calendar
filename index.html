@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calendar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #2A2522;
+    --sub: #8F867C;
+    --line: #D6CFC4;
+    --linen: #ECE6DD;
+    --bg: #FFFFFF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); }
+  body {
+    font-family: "Inter", -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 6px 4px;
+  }
+  .cal { width: 100%; max-width: 260px; }
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 0 2px 8px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 8px;
+  }
+  .month { font-family: "DM Serif Display", Georgia, serif; font-size: 20px; line-height: 1.1; }
+  .year { font-size: 11px; color: var(--sub); letter-spacing: .08em; margin-left: 6px; }
+  .nav { display: flex; gap: 2px; }
+  .nav button {
+    border: 0; background: none; cursor: pointer;
+    color: var(--sub); font-size: 13px; width: 20px; height: 20px; border-radius: 50%;
+  }
+  .nav button:hover { background: var(--linen); color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 2px; text-align: center; }
+  .dow { font-size: 9px; font-weight: 600; letter-spacing: .08em; color: var(--sub); padding-bottom: 4px; }
+  .day {
+    font-size: 11.5px; line-height: 24px; height: 24px; width: 24px;
+    margin: 0 auto; border-radius: 50%; font-variant-numeric: tabular-nums;
+  }
+  .day.out { color: var(--line); }
+  .day.wknd { color: var(--sub); }
+  .day.today { background: var(--ink); color: #fff; font-weight: 600; }
+  .foot {
+    margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--line);
+    font-size: 10.5px; color: var(--sub); text-align: center; letter-spacing: .02em;
+  }
+  .foot b { color: var(--ink); font-weight: 500; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink: #EDE7DF; --sub: #9A9187; --line: #4A443F; --linen: #34302C; --bg: #191919; }
+    .day.today { color: #191919; }
+  }
+</style>
+</head>
+<body>
+<div class="cal">
+  <div class="head">
+    <div><span class="month" id="m"></span><span class="year" id="y"></span></div>
+    <div class="nav">
+      <button id="prev" aria-label="Previous month">&#8249;</button>
+      <button id="next" aria-label="Next month">&#8250;</button>
+    </div>
+  </div>
+  <div class="grid" id="g"></div>
+  <div class="foot" id="f"></div>
+</div>
+<script>
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DOW = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const today = new Date();
+  let view = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  function render() {
+    const y = view.getFullYear(), mo = view.getMonth();
+    document.getElementById("m").textContent = MONTHS[mo];
+    document.getElementById("y").textContent = y;
+    const g = document.getElementById("g");
+    g.innerHTML = DOW.map(d => `<div class="dow">${d.toUpperCase().slice(0,2)}</div>`).join("");
+    const first = (new Date(y, mo, 1).getDay() + 6) % 7;      // Monday-first offset
+    const days = new Date(y, mo + 1, 0).getDate();
+    const prevDays = new Date(y, mo, 0).getDate();
+    const cells = Math.ceil((first + days) / 7) * 7;
+    let html = "";
+    for (let i = 0; i < cells; i++) {
+      const col = i % 7;
+      let n, cls = "day";
+      if (i < first) { n = prevDays - first + i + 1; cls += " out"; }
+      else if (i >= first + days) { n = i - first - days + 1; cls += " out"; }
+      else {
+        n = i - first + 1;
+        if (col >= 5) cls += " wknd";
+        if (y === today.getFullYear() && mo === today.getMonth() && n === today.getDate()) cls += " today";
+      }
+      html += `<div class="${cls}">${n}</div>`;
+    }
+    g.insertAdjacentHTML("beforeend", html);
+    const wd = today.toLocaleDateString("en-US", { weekday: "long" });
+    document.getElementById("f").innerHTML =
+      `<b>${wd}</b> · ${today.getDate()} ${MONTHS[today.getMonth()].slice(0,3)}`;
+  }
+  document.getElementById("prev").onclick = () => { view.setMonth(view.getMonth() - 1); render(); };
+  document.getElementById("next").onclick = () => { view.setMonth(view.getMonth() + 1); render(); };
+  render();
+  // refresh at midnight so an open page rolls over to the new day
+  setInterval(() => {
+    const now = new Date();
+    if (now.getDate() !== today.getDate()) location.reload();
+  }, 60000);
+</script>
+</body>
+</html>
