@@ -60,6 +60,22 @@
   .clk .ampm { font-family: "Inter", sans-serif; font-size: 10px; color: var(--sub); letter-spacing: .08em; margin-left: 4px; }
   .with-clock .clk { display: block; }
   .with-clock .foot { border-bottom: 0; }
+  .tmr { display: none; margin-top: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); text-align: center; }
+  .with-timer .tmr { display: block; }
+  .with-timer.with-clock .clk { border-bottom: 0; padding-bottom: 2px; }
+  .tmr .modes { display: flex; justify-content: center; gap: 12px; margin-bottom: 6px; }
+  .tmr .modes button, .tmr .ctl button {
+    border: 0; background: none; cursor: pointer; font-family: "Inter", sans-serif;
+    font-size: 8.5px; font-weight: 600; letter-spacing: .1em; color: var(--sub); padding: 2px 0;
+  }
+  .tmr .modes button.on { color: var(--ink); border-bottom: 1px solid var(--ink); }
+  .tmr .left { font-family: "DM Serif Display", Georgia, serif; font-size: clamp(17px, 13vw, 21px); line-height: 1; font-variant-numeric: tabular-nums; }
+  .tmr .bar { height: 2px; background: var(--linen); margin: 8px 14% 7px; border-radius: 2px; overflow: hidden; }
+  .tmr .bar i { display: block; height: 100%; width: 0; background: var(--ink); transition: width .5s linear; }
+  .tmr .ctl { display: flex; justify-content: center; gap: 14px; }
+  .tmr .ctl button { font-size: 9.5px; letter-spacing: .06em; color: var(--ink); padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; }
+  .tmr .ctl button.ghost { border-color: transparent; color: var(--sub); }
+  .tmr .count { margin-top: 6px; font-size: 9px; color: var(--sub); letter-spacing: .03em; }
   @media (prefers-color-scheme: dark) {
     :root { --ink: #EDE7DF; --sub: #9A9187; --line: #4A443F; --linen: #34302C; --bg: #191919; }
     .day.today { color: #191919; }
@@ -78,6 +94,19 @@
   <div class="grid" id="g"></div>
   <div class="foot" id="f"></div>
   <div class="clk"><div class="time" id="t"></div></div>
+  <div class="tmr">
+    <div class="modes">
+      <button data-min="25" class="on">FOCUS 25</button>
+      <button data-min="5">BREAK 5</button>
+    </div>
+    <div class="left" id="left">25:00</div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="ctl">
+      <button id="go">Start</button>
+      <button id="rs" class="ghost">Reset</button>
+    </div>
+    <div class="count" id="count">0 focus sessions today</div>
+  </div>
 </div>
 <script>
   const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -131,10 +160,46 @@
     tick();
     setTimeout(() => { tick(); setInterval(tick, 60000); }, (60 - new Date().getSeconds()) * 1000 + 50);
   }
-  // refresh at midnight so an open page rolls over to the new day
+  // ?timer=1 adds a focus (Pomodoro) timer: 25 min focus / 5 min break
+  let running = false;
+  if (qs.get("timer") === "1") {
+    document.querySelector(".cal").classList.add("with-timer");
+    const left = document.getElementById("left"), bar = document.getElementById("bar");
+    const go = document.getElementById("go"), rs = document.getElementById("rs");
+    const cnt = document.getElementById("count");
+    const key = "p32-focus-" + today.toDateString();
+    let done = 0; try { done = +localStorage.getItem(key) || 0; } catch (e) {}
+    const showCount = () => cnt.textContent = done + (done === 1 ? " focus session" : " focus sessions") + " today";
+    showCount();
+    let mins = 25, total = mins * 60, rest = total, endAt = 0, iv = null;
+    const draw = () => {
+      left.textContent = String(Math.floor(rest / 60)).padStart(2, "0") + ":" + String(rest % 60).padStart(2, "0");
+      bar.style.width = (100 * (total - rest) / total) + "%";
+    };
+    const stop = () => { running = false; clearInterval(iv); go.textContent = rest < total ? "Resume" : "Start"; };
+    const finish = () => {
+      stop(); rest = 0; draw();
+      if (mins === 25) { done++; try { localStorage.setItem(key, done); } catch (e) {} showCount(); }
+      go.textContent = "Start"; rest = total;
+      try { new AudioContext().resume().then(function () { const c = new AudioContext(), o = c.createOscillator(); o.frequency.value = 660; o.connect(c.destination); o.start(); o.stop(c.currentTime + .4); }); } catch (e) {}
+      setTimeout(draw, 1500);
+    };
+    go.onclick = () => {
+      if (running) { stop(); return; }
+      running = true; go.textContent = "Pause"; endAt = Date.now() + rest * 1000;
+      iv = setInterval(() => { rest = Math.max(0, Math.round((endAt - Date.now()) / 1000)); draw(); if (rest === 0) finish(); }, 250);
+    };
+    rs.onclick = () => { stop(); rest = total; go.textContent = "Start"; draw(); };
+    document.querySelectorAll(".modes button").forEach(b => b.onclick = () => {
+      document.querySelectorAll(".modes button").forEach(x => x.classList.remove("on"));
+      b.classList.add("on"); stop(); mins = +b.dataset.min; total = rest = mins * 60; go.textContent = "Start"; draw();
+    });
+    draw();
+  }
+  // refresh at midnight so an open page rolls over to the new day (not mid-session)
   setInterval(() => {
     const now = new Date();
-    if (now.getDate() !== today.getDate()) location.reload();
+    if (now.getDate() !== today.getDate() && !running) location.reload();
   }, 60000);
 </script>
 </body>
